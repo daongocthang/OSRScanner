@@ -1,20 +1,15 @@
 package com.runit.ocrscanner.ui
 
 
-import android.graphics.RectF
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.camera.view.TransformExperimental
-import androidx.camera.view.transform.CoordinateTransform
-import androidx.camera.view.transform.ImageProxyTransformFactory
-import androidx.camera.view.transform.OutputTransform
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,7 +28,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.runit.ocrscanner.OcrEngine
-import com.runit.ocrscanner.model.ScanBox
+import com.runit.ocrscanner.model.ScanArea
 import java.util.concurrent.Executors
 
 @OptIn(TransformExperimental::class)
@@ -43,7 +38,7 @@ fun CameraUI(
     flash: Boolean,
     scale: Float = 2f,
     intervalMs: Long = 3000L,
-    scanBox: ScanBox,
+    scanArea: ScanArea,
     onResult: (String) -> Unit
 ) {
 
@@ -81,7 +76,7 @@ fun CameraUI(
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
     var camera by remember { mutableStateOf<Camera?>(null) }
 
-    val currentScanBox by rememberUpdatedState(scanBox)
+    val currentScanBox by rememberUpdatedState(scanArea)
 
     LaunchedEffect(camera, flash) {
         camera?.let { cam ->
@@ -123,7 +118,7 @@ fun CameraUI(
                             try {
                                 engine.process(
                                     proxy,
-                                    scanBox,
+                                    scanArea,
                                     viewSize.width,
                                     viewSize.height
                                 )

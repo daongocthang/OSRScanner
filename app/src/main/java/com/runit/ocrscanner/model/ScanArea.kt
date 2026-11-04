@@ -2,7 +2,7 @@ package com.runit.ocrscanner.model
 
 import android.graphics.RectF
 
-data class ScanBox(
+data class ScanArea(
     val width: Float = 0.9f,
     val height: Float = 0.9f,
 ) {

@@ -1,7 +1,5 @@
 package com.runit.ocrscanner.ui
 
-import android.R.attr.maxHeight
-import android.R.attr.maxWidth
 import android.content.pm.PackageManager
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,17 +17,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -48,16 +48,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.runit.ocrscanner.ScanStore
 import com.runit.ocrscanner.SsidParser
-import com.runit.ocrscanner.model.ScanBox
+import com.runit.ocrscanner.model.ScanArea
 import com.runit.ocrscanner.model.ScanResult
 import com.runit.ocrscanner.ui.theme.AppTheme
 
@@ -94,7 +93,6 @@ fun OcrScreen() {
         mutableStateOf("")
     }
 
-
     var pending by remember {
         mutableStateOf<String?>(null)
     }
@@ -105,6 +103,10 @@ fun OcrScreen() {
 
     var lastAcceptedTime by remember {
         mutableLongStateOf(0L)
+    }
+
+    var ssidExists by remember {
+        mutableStateOf(false)
     }
 
     fun handleOcr(raw: String, cb: (success: Boolean) -> Unit = {}) {
@@ -139,10 +141,13 @@ fun OcrScreen() {
     OcrContent(
         text = text,
         flash = flash,
+        exists = ssidExists,
         enable = enable,
         hasPermission = hasPermission,
         onResult = { result ->
-            handleOcr(result)
+            handleOcr(result) {
+                ssidExists = !it
+            }
         },
         onScanToggle = {
             enable = !enable
@@ -159,6 +164,7 @@ fun OcrScreen() {
 @Composable
 fun OcrContent(
     text: String,
+    exists: Boolean,
     flash: Boolean,
     enable: Boolean,
     hasPermission: Boolean,
@@ -168,8 +174,8 @@ fun OcrContent(
     onRequestPermission: () -> Unit,
     isPreview: Boolean = false
 ) {
-    val scanBox = remember {
-        ScanBox(
+    val scanArea = remember {
+        ScanArea(
             width = 0.9f,
             height = 0.35f
         )
@@ -210,13 +216,18 @@ fun OcrContent(
                         scale = 6f,
                         enabled = enable,
                         flash = flash,
-                        scanBox = scanBox,
+                        scanArea = scanArea,
                         onResult = onResult
                     )
 
                     ScanOverlay(
+                        scanArea = scanArea,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                    InfoOverlay(
                         text = SsidParser.parse(text),
-                        scanBox = scanBox
+                        exists = exists,
+                        scanArea = scanArea,
                     )
                 }
             }
@@ -277,60 +288,71 @@ fun OcrContent(
     }
 }
 
-
 @Composable
-fun ScanOverlay(
-    scanBox: ScanBox,
+private fun InfoOverlay(
     text: String?,
+    exists: Boolean,
+    scanArea: ScanArea,
     modifier: Modifier = Modifier
 ) {
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        val width = maxWidth * scanBox.width
-        val height = maxHeight * scanBox.height
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(width)
-                    .height(40.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!text.isNullOrBlank()) {
-                    Text(
-                        text = text,
-                        color = Color(0xFF1B5E20),
-                        fontSize = 22.sp,
-                        lineHeight = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .background(
-                                color = Color(0xFFDFF5E3).copy(alpha = 0.9f),
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            }
+    if (text.isNullOrBlank()) return
 
-            Box(
-                modifier = Modifier
-                    .size(width, height)
-                    .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+    val bgColor = Color(0xFFE6F4EA)
+    val textColor = Color(0xFF14532D)
+    val iconColor = if (exists) Color(0xFFC66A12) else Color(0xFF16803C)
+
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize(),
+    ) {
+        val top = maxHeight * (1f - scanArea.height) / 2f
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = top - 46.dp)
+                .background(bgColor, RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+
+        ) {
+            Icon(
+                imageVector = if (exists) Icons.Default.Wifi else Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(18.dp)
             )
-            Spacer(Modifier.height(40.dp))
+            Text(
+                text = text,
+                color = textColor,
+                maxLines = 1,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
 
 @Composable
-fun OcrPlaceHolder() {
+private fun ScanOverlay(
+    scanArea: ScanArea,
+    modifier: Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth(scanArea.width)
+            .fillMaxHeight(scanArea.height)
+            .border(
+                2.dp,
+                Color.Green,
+                RoundedCornerShape(8.dp)
+            )
+    )
+}
+
+
+@Composable
+private fun OcrPlaceHolder() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -350,11 +372,12 @@ fun OcrPlaceHolder() {
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun OcrScreenPreview() {
+private fun OcrScreenPreview() {
     AppTheme {
         OcrContent(
             text = "SSID: Viettel_ABCD\nSerial:123456789"
                 .repeat(3),
+            exists = false,
             flash = true,
             enable = true,
             hasPermission = false,

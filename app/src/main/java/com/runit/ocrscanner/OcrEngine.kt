@@ -8,7 +8,7 @@ import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import com.runit.ocrscanner.model.ScanBox
+import com.runit.ocrscanner.model.ScanArea
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.Volatile
 
@@ -46,14 +46,14 @@ class OcrEngine(
      */
     fun process(
         proxy: ImageProxy,
-        scanBox: ScanBox?,
+        scanArea: ScanArea?,
         viewWidth: Int,
         viewHeight: Int
     ) {
         if (
             closed.get() ||
             !enabled ||
-            scanBox == null
+            scanArea == null
         ) {
             proxy.close()
             return
@@ -99,7 +99,7 @@ class OcrEngine(
             }
 
             // 2. Crop with ScanArea
-            val cropped = cropForOCR(upright, scanBox, viewWidth, viewHeight)
+            val cropped = cropForOCR(upright, scanArea, viewWidth, viewHeight)
             bitmaps.add(cropped)
 
             // 3. Resize
@@ -171,7 +171,7 @@ class OcrEngine(
 
     private fun cropForOCR(
         bitmap: Bitmap,
-        scanBox: ScanBox,
+        scanArea: ScanArea,
         viewWidth: Int,
         viewHeight: Int
     ): Bitmap {
@@ -190,7 +190,7 @@ class OcrEngine(
         val offsetX = (scaleWidth - viewWidth) / 2f
         val offsetY = (scaleHeight - viewHeight) / 2f
 
-        val box = scanBox.rect(viewWidth, viewHeight)
+        val box = scanArea.rect(viewWidth, viewHeight)
 
         val left = ((box.left + offsetX) / scale)
             .toInt().coerceIn(0, imageWidth - 1)
