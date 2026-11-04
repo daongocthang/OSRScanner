@@ -1,5 +1,7 @@
 package com.runit.ocrscanner.ui
 
+import android.R.attr.maxHeight
+import android.R.attr.maxWidth
 import android.content.pm.PackageManager
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -8,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -44,8 +48,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.runit.ocrscanner.ScanStore
 import com.runit.ocrscanner.SsidParser
@@ -60,11 +68,6 @@ fun OcrScreen() {
         ScanStore(context)
     }
 
-    val rows = remember {
-        mutableListOf<ScanResult>().apply {
-            addAll(store.list())
-        }
-    }
     var hasPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -105,9 +108,7 @@ fun OcrScreen() {
     }
 
     fun handleOcr(raw: String, cb: (success: Boolean) -> Unit = {}) {
-        text = SsidParser.parse(raw) ?: "not found"
-        text += "\n\n$raw"
-
+        text = raw
 
         val code = SsidParser.parse(raw)
 
@@ -213,7 +214,10 @@ fun OcrContent(
                         onResult = onResult
                     )
 
-                    ScanOverlay(scanBox = scanBox)
+                    ScanOverlay(
+                        text = SsidParser.parse(text),
+                        scanBox = scanBox
+                    )
                 }
             }
         }
@@ -277,19 +281,52 @@ fun OcrContent(
 @Composable
 fun ScanOverlay(
     scanBox: ScanBox,
+    text: String?,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth(scanBox.width)
-            .fillMaxHeight(scanBox.height)
-            .border(
-                2.dp,
-                Color.Green,
-                RoundedCornerShape(8.dp)
-            ),
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
-    ) {}
+    ) {
+        val width = maxWidth * scanBox.width
+        val height = maxHeight * scanBox.height
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(width)
+                    .height(40.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!text.isNullOrBlank()) {
+                    Text(
+                        text = text,
+                        color = Color(0xFF1B5E20),
+                        fontSize = 22.sp,
+                        lineHeight = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .background(
+                                color = Color(0xFFDFF5E3).copy(alpha = 0.9f),
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(width, height)
+                    .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            )
+            Spacer(Modifier.height(40.dp))
+        }
+    }
 }
 
 @Composable
