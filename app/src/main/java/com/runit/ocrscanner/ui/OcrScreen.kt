@@ -67,6 +67,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.runit.ocrscanner.Beep
 import com.runit.ocrscanner.CsvWriter
 import com.runit.ocrscanner.ScanStore
 import com.runit.ocrscanner.SsidParser
@@ -87,6 +88,16 @@ fun OcrScreen() {
 
     val csvWriter = remember {
         CsvWriter(context)
+    }
+
+    val beep = remember {
+        Beep()
+    }
+
+    DisposableEffect(beep) {
+        onDispose {
+            beep.close()
+        }
     }
 
     var hasPermission by remember {
@@ -132,9 +143,10 @@ fun OcrScreen() {
         mutableIntStateOf(store.count())
     }
 
-    DisposableEffect(csvWriter) {
+    DisposableEffect(csvWriter, beep) {
         onDispose {
             csvWriter.close()
+            beep.close()
         }
     }
 
@@ -176,7 +188,10 @@ fun OcrScreen() {
         onResult = { result ->
             handleOcr(result) {
                 ssidExists = !it
-                if (it) count = store.count()
+                if (it) {
+                    count = store.count()
+                    beep.play()
+                }
             }
         },
         onRequestPermission = {
@@ -395,7 +410,7 @@ private fun ActionMenu(
                         text = label,
                         maxLines = 1,
                         fontSize = 12.sp,
-                        color= Color(0xFFFFFFFF)
+                        color = Color(0xFFFFFFFF)
                     )
                 }
 
