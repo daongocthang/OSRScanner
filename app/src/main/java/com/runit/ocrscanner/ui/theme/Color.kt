@@ -9,3 +9,9 @@ val Pink80 = Color(0xFFEFB8C8)
 val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
+
+val BackgroundColor = Color(0xFF30343B)
+val TextColor = Color(0xFFF9FAFB)
+
+val SuccessColor = Color(0xFF34D399)
+val WarningColor = Color(0xFFFBBF24)

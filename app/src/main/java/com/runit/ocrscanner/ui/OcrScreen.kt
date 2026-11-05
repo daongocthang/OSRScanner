@@ -2,14 +2,17 @@ package com.runit.ocrscanner.ui
 
 import android.content.pm.PackageManager
 import android.os.SystemClock
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -17,17 +20,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
@@ -36,14 +45,18 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.simulateHotReload
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,17 +67,26 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.runit.ocrscanner.CsvWriter
 import com.runit.ocrscanner.ScanStore
 import com.runit.ocrscanner.SsidParser
 import com.runit.ocrscanner.model.ScanArea
 import com.runit.ocrscanner.model.ScanResult
 import com.runit.ocrscanner.ui.theme.AppTheme
+import com.runit.ocrscanner.ui.theme.BackgroundColor
+import com.runit.ocrscanner.ui.theme.SuccessColor
+import com.runit.ocrscanner.ui.theme.TextColor
+import com.runit.ocrscanner.ui.theme.WarningColor
 
 @Composable
 fun OcrScreen() {
     val context = LocalContext.current
     val store = remember {
         ScanStore(context)
+    }
+
+    val csvWriter = remember {
+        CsvWriter(context)
     }
 
     var hasPermission by remember {
@@ -86,9 +108,7 @@ fun OcrScreen() {
     var enable by remember {
         mutableStateOf(true)
     }
-    var flash by remember {
-        mutableStateOf(false)
-    }
+
     var text by remember {
         mutableStateOf("")
     }
@@ -108,9 +128,18 @@ fun OcrScreen() {
     var ssidExists by remember {
         mutableStateOf(false)
     }
+    var count by remember {
+        mutableIntStateOf(store.count())
+    }
+
+    DisposableEffect(csvWriter) {
+        onDispose {
+            csvWriter.close()
+        }
+    }
 
     fun handleOcr(raw: String, cb: (success: Boolean) -> Unit = {}) {
-        text = raw
+        text = SsidParser.parse(raw) ?: ""
 
         val code = SsidParser.parse(raw)
 
@@ -140,24 +169,30 @@ fun OcrScreen() {
 
     OcrContent(
         text = text,
-        flash = flash,
-        exists = ssidExists,
+        count = count,
         enable = enable,
+        exists = ssidExists,
         hasPermission = hasPermission,
         onResult = { result ->
             handleOcr(result) {
                 ssidExists = !it
+                if (it) count = store.count()
             }
-        },
-        onScanToggle = {
-            enable = !enable
-        },
-        onFlashToggle = {
-            flash = !flash
         },
         onRequestPermission = {
             permissionLauncher.launch(android.Manifest.permission.CAMERA)
-        }
+        },
+        onClear = {
+            count = 0
+            store.clear()
+        },
+        onShare = {
+            csvWriter.share(
+                store.list()
+            ) { error ->
+                Log.e("OcrScreen", "Share failed", error)
+            }
+        },
     )
 }
 
@@ -165,13 +200,13 @@ fun OcrScreen() {
 fun OcrContent(
     text: String,
     exists: Boolean,
-    flash: Boolean,
     enable: Boolean,
+    count: Int,
     hasPermission: Boolean,
     onResult: (String) -> Unit,
-    onScanToggle: () -> Unit,
-    onFlashToggle: () -> Unit,
     onRequestPermission: () -> Unit,
+    onClear: () -> Unit,
+    onShare: () -> Unit,
     isPreview: Boolean = false
 ) {
     val scanArea = remember {
@@ -179,6 +214,14 @@ fun OcrContent(
             width = 0.9f,
             height = 0.35f
         )
+    }
+
+    var scale by remember {
+        mutableFloatStateOf(2f)
+    }
+
+    var flash by remember {
+        mutableStateOf(false)
     }
 
     Column(
@@ -213,7 +256,7 @@ fun OcrContent(
 
                 else -> {
                     CameraUI(
-                        scale = 6f,
+                        scale = scale,
                         enabled = enable,
                         flash = flash,
                         scanArea = scanArea,
@@ -225,64 +268,137 @@ fun OcrContent(
                         modifier = Modifier.align(Alignment.Center)
                     )
                     InfoOverlay(
-                        text = SsidParser.parse(text),
+                        text = text,
                         exists = exists,
                         scanArea = scanArea,
                     )
                 }
             }
         }
-        HorizontalDivider()
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(220.dp)
-                .padding(8.dp)
-                .background(Color.White),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        InfoBar(
+            count = count,
+            scale = scale,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    8.dp,
-                    Alignment.CenterHorizontally
-                ),
-                verticalAlignment = Alignment.CenterVertically
+            scale = if (scale >= 6f) 1f else scale + 1
+        }
+        ActionMenu(
+            onFlash = { flash = !flash },
+            onClear = onClear,
+            onShare = onShare
+        )
+    }
+}
 
+@Composable
+fun InfoBar(
+    count: Int,
+    scale: Float,
+    onScaleClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFF202526)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Layers,
+                contentDescription = null,
+                tint = Color.LightGray,
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = "Đã quét: $count",
+                color = Color.White,
+                fontSize = 15.sp
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Surface(
+                onClick = onScaleClick,
+                shape = RoundedCornerShape(50),
+                color = Color(0xFF263B29),
+                border = BorderStroke(
+                    1.dp,
+                    Color(0xFF54885A)
+                )
             ) {
-                Button(
-                    onClick = onScanToggle,
-                    shape = RoundedCornerShape(8.dp),
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = 12.dp,
+                        vertical = 8.dp
+                    ),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = Icons.Default.CenterFocusStrong,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        tint = Color(0xFF92F77C),
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(if (enable) "STOP" else "SCAN")
-                }
-                OutlinedButton(
-                    onClick = onFlashToggle,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FlashOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+
+                    Spacer(Modifier.width(6.dp))
+
+                    Text(
+                        text = "OCR x${scale.toInt()}",
+                        color = Color(0xFF92F77C),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                    Text("FLASH")
                 }
             }
-            Text("Result", style = MaterialTheme.typography.titleMedium)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .verticalScroll(rememberScrollState())
+        }
+    }
+}
+
+@Composable
+private fun ActionMenu(
+    onFlash: () -> Unit,
+    onClear: () -> Unit,
+    onShare: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        val actions = listOf(
+            Triple("ĐÈN", Icons.Default.FlashOn, onFlash),
+            Triple("XÓA", Icons.Default.DeleteOutline, onClear),
+            Triple("CHIA SẺ", Icons.Default.Share, onShare),
+        )
+
+        actions.forEach { (label, icon, action) ->
+            OutlinedButton(
+                onClick = action,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(
+                    horizontal = 12.dp,
+                    vertical = 8.dp
+                ),
             ) {
-                Text(text = text.ifBlank { "No text found" })
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = Color(0xFF92F77C)
+                    )
+                    Text(
+                        text = label,
+                        maxLines = 1,
+                        fontSize = 12.sp,
+                        color= Color(0xFFFFFFFF)
+                    )
+                }
+
             }
         }
     }
@@ -296,10 +412,7 @@ private fun InfoOverlay(
     modifier: Modifier = Modifier
 ) {
     if (text.isNullOrBlank()) return
-
-    val bgColor = Color(0xFFE6F4EA)
-    val textColor = Color(0xFF14532D)
-    val iconColor = if (exists) Color(0xFFC66A12) else Color(0xFF16803C)
+    val iconColor = if (exists) WarningColor else SuccessColor
 
     BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
@@ -310,7 +423,7 @@ private fun InfoOverlay(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = top - 46.dp)
-                .background(bgColor, RoundedCornerShape(8.dp))
+                .background(BackgroundColor, RoundedCornerShape(8.dp))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -324,7 +437,7 @@ private fun InfoOverlay(
             )
             Text(
                 text = text,
-                color = textColor,
+                color = TextColor,
                 maxLines = 1,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold
@@ -378,14 +491,14 @@ private fun OcrScreenPreview() {
             text = "SSID: Viettel_ABCD\nSerial:123456789"
                 .repeat(3),
             exists = false,
-            flash = true,
             enable = true,
-            hasPermission = false,
+            count = 0,
+            hasPermission = true,
             onResult = {},
-            onScanToggle = {},
-            onFlashToggle = {},
             onRequestPermission = {},
-            isPreview = false
+            onClear = {},
+            onShare = {},
+            isPreview = true
         )
     }
 }

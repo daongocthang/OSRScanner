@@ -63,5 +63,6 @@ class ScanStore(context: Context) {
         return rows.toList()
     }
 
-    fun isEmpty(): Boolean = rows.isEmpty()
+    fun count(): Int = rows.count()
+
 }
