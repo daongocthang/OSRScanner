@@ -94,8 +94,9 @@ fun OcrScreen() {
         Beep()
     }
 
-    DisposableEffect(beep) {
+    DisposableEffect(csvWriter, beep) {
         onDispose {
+            csvWriter.close()
             beep.close()
         }
     }
@@ -141,13 +142,6 @@ fun OcrScreen() {
     }
     var count by remember {
         mutableIntStateOf(store.count())
-    }
-
-    DisposableEffect(csvWriter, beep) {
-        onDispose {
-            csvWriter.close()
-            beep.close()
-        }
     }
 
     fun handleOcr(raw: String, cb: (success: Boolean) -> Unit = {}) {
@@ -297,6 +291,7 @@ fun OcrContent(
             scale = if (scale >= 6f) 1f else scale + 1
         }
         ActionMenu(
+            enabled = count > 0,
             onFlash = { flash = !flash },
             onClear = onClear,
             onShare = onShare
@@ -369,6 +364,7 @@ fun InfoBar(
 
 @Composable
 private fun ActionMenu(
+    enabled: Boolean,
     onFlash: () -> Unit,
     onClear: () -> Unit,
     onShare: () -> Unit,
@@ -395,6 +391,7 @@ private fun ActionMenu(
                     horizontal = 12.dp,
                     vertical = 8.dp
                 ),
+                enabled = label == "ĐÈN" || enabled
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
