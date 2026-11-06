@@ -60,8 +60,10 @@ fun OCRScannerTheme(
 }
 
 @Composable
-fun AppTheme(content: @Composable () -> Unit) {
-    val colorTheme = lightColorScheme(
+fun AppTheme(
+    content: @Composable () -> Unit
+) {
+    val colorTheme = darkColorScheme(
         primary = Color(0xFF0288D1),
         onPrimary = Color.White,
         primaryContainer = Color(0xFFE0F7FA),

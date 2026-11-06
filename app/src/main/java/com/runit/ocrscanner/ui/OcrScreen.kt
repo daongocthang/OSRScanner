@@ -225,7 +225,8 @@ fun OcrContent(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
     ) {
         Box(
             modifier = Modifier
@@ -250,7 +251,7 @@ fun OcrContent(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Grant".uppercase())
+                        Text("Cấp quyền".uppercase())
                     }
                 }
 
@@ -365,13 +366,13 @@ private fun ActionMenu(
             .fillMaxWidth()
             .background(BackgroundColor)
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         val actions = listOf(
             Triple("ĐÈN", Icons.Default.FlashOn, onFlash),
             Triple("XÓA", Icons.Default.DeleteOutline, onClear),
-            Triple("CHIA SẺ", Icons.Default.Share, onShare),
+            Triple("XUẤT", Icons.Default.Share, onShare),
         )
 
         actions.forEach { (label, icon, action) ->
@@ -382,11 +383,6 @@ private fun ActionMenu(
                 contentPadding = PaddingValues(
                     horizontal = 12.dp,
                     vertical = 8.dp
-                ),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color(0xFF303738),
-                    contentColor = Color(0xFF92F77C),
-                    disabledContentColor = Color.Gray
                 ),
                 enabled = label == "ĐÈN" || enabled
             ) {
