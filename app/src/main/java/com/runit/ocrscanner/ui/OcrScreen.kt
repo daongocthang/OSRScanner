@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -282,6 +284,9 @@ fun OcrContent(
         ) {
             scale = if (scale >= 6f) 1f else scale + 1
         }
+        HorizontalDivider(
+            modifier = Modifier.height(1.dp)
+        )
         ActionMenu(
             enabled = count > 0,
             onFlash = { flash = !flash },
@@ -365,40 +370,38 @@ private fun ActionMenu(
         modifier = Modifier
             .fillMaxWidth()
             .background(BackgroundColor)
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .navigationBarsPadding(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         val actions = listOf(
             Triple("ĐÈN", Icons.Default.FlashOn, onFlash),
             Triple("XÓA", Icons.Default.DeleteOutline, onClear),
-            Triple("XUẤT", Icons.Default.Share, onShare),
+            Triple("CHIA SẺ", Icons.Default.Share, onShare),
         )
 
         actions.forEach { (label, icon, action) ->
             OutlinedButton(
                 onClick = action,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
+                border = null,
                 contentPadding = PaddingValues(
                     horizontal = 12.dp,
                     vertical = 8.dp
                 ),
                 enabled = label == "ĐÈN" || enabled
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(24.dp),
                     )
                     Text(
                         text = label,
                         maxLines = 1,
-                        fontSize = 12.sp,
+                        fontSize = 8.sp,
                     )
                 }
 
